@@ -6,13 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import Papa from 'papaparse';
 
+// Type for CSV row
+type CSVRow = {
+  latitude: string;
+  longitude: string;
+  [key: string]: string;
+};
+
 export default function DigiPinConverter() {
-  const [rawData, setRawData] = useState<any[]>([]);
-  const [processedData, setProcessedData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<CSVRow[]>([]);
+  const [processedData, setProcessedData] = useState<CSVRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null); // NEW: error state
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -20,44 +26,22 @@ export default function DigiPinConverter() {
 
     setProcessedData([]);
     setDownloadUrl(null);
-    setError(null); // Clear previous errors
 
-    Papa.parse(file, {
+    Papa.parse<CSVRow>(file, {
       header: true,
       skipEmptyLines: true,
       complete: function (results) {
-        if (!results.meta.fields) {
-          setError('The CSV file has no headers.');
-          return;
-        }
-
-        const requiredColumns = ['latitude', 'longitude'];
-        const missing = requiredColumns.filter(col => !results.meta.fields!.includes(col));
-
-        if (missing.length > 0) {
-          setError(`Missing required column(s): ${missing.join(', ')}`);
-          return;
-        }
-
-        const cleaned = results.data.filter((row: any) => row.latitude && row.longitude);
-        if (cleaned.length === 0) {
-          setError('No valid rows with latitude and longitude found.');
-          return;
-        }
-
+        const cleaned = results.data.filter((row) => row.latitude && row.longitude);
         setRawData(cleaned);
         setHeaders(Object.keys(cleaned[0]));
       },
-      error: (err) => {
-        setError(`Error parsing CSV: ${err.message}`);
-      }
     });
   };
 
   const handleProcess = () => {
     setProcessing(true);
 
-    const enriched = rawData.map((row: any) => {
+    const enriched = rawData.map((row) => {
       const lat = parseFloat(row.latitude);
       const lon = parseFloat(row.longitude);
       const digipin = getDIGIPIN(lat, lon);
@@ -85,7 +69,7 @@ export default function DigiPinConverter() {
     let vDIGIPIN = '';
     let row = 0, column = 0;
     let MinLat = 2.5, MaxLat = 38.50, MinLon = 63.50, MaxLon = 99.50;
-    const LatDivBy = 4, LonDivBy = 4;
+    let LatDivBy = 4, LonDivBy = 4;
 
     if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) return 'Out of Bound';
 
@@ -151,13 +135,6 @@ export default function DigiPinConverter() {
         <Card className="w-full max-w-6xl">
           <CardContent className="p-6 space-y-4">
             <h2 className="text-xl font-bold">DIGIPIN Generator from CSV</h2>
-
-            {error && (
-              <div className="p-3 bg-red-100 text-red-700 border border-red-400 rounded">
-                <strong>Error:</strong> {error}
-              </div>
-            )}
-
             <Input type="file" accept=".csv" onChange={handleFileUpload} />
 
             {rawData.length > 0 && processedData.length === 0 && (
