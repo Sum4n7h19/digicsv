@@ -69,7 +69,7 @@ export default function DigiPinConverter() {
     let vDIGIPIN = '';
     let row = 0, column = 0;
     let MinLat = 2.5, MaxLat = 38.50, MinLon = 63.50, MaxLon = 99.50;
-    let LatDivBy = 4, LonDivBy = 4;
+    const LatDivBy = 4, LonDivBy = 4;
 
     if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) return 'Out of Bound';
 
