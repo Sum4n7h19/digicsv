@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import Papa from 'papaparse';
 
-// Type for CSV row
 type CSVRow = {
   latitude: string;
   longitude: string;
@@ -132,19 +131,32 @@ export default function DigiPinConverter() {
           </h1>
         </center>
 
-        <Card className="w-full max-w-6xl">
+        <Card className="w-full max-w-6xl border border-black">
           <CardContent className="p-6 space-y-4">
             <h2 className="text-xl font-bold">DIGIPIN Generator from CSV</h2>
-            <Input type="file" accept=".csv" onChange={handleFileUpload} />
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <Input className="border border-black" type="file" accept=".csv" onChange={handleFileUpload} />
+              <a
+                href="https://raw.githubusercontent.com/Sum4n7h19/digicsv/refs/heads/master/sample/sample.csv"
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="border border-black">
+                  Download Sample CSV
+                </Button>
+              </a>
+            </div>
 
             {rawData.length > 0 && processedData.length === 0 && (
               <>
-                <div className="mt-4 overflow-auto max-h-[300px] border rounded-md">
-                  <table className="table-auto w-full text-sm">
+                <div className="mt-4 overflow-auto max-h-[300px] border border-black rounded-md">
+                  <table className="table-auto w-full text-sm border border-black">
                     <thead>
                       <tr className="bg-gray-100">
                         {headers.map((h, i) => (
-                          <th key={i} className="px-3 py-2 border-b">{h}</th>
+                          <th key={i} className="px-3 py-2 border border-black">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -152,7 +164,7 @@ export default function DigiPinConverter() {
                       {rawData.slice(0, 10).map((row, rowIndex) => (
                         <tr key={rowIndex} className="even:bg-gray-50">
                           {headers.map((h, i) => (
-                            <td key={i} className="px-3 py-1 border-b">{row[h]}</td>
+                            <td key={i} className="px-3 py-1 border border-black">{row[h]}</td>
                           ))}
                         </tr>
                       ))}
@@ -168,12 +180,12 @@ export default function DigiPinConverter() {
 
             {processedData.length > 0 && (
               <>
-                <div className="mt-4 overflow-auto max-h-[300px] border rounded-md">
-                  <table className="table-auto w-full text-sm">
+                <div className="mt-4 overflow-auto max-h-[300px] border border-black rounded-md">
+                  <table className="table-auto w-full text-sm border border-black">
                     <thead>
                       <tr className="bg-green-100">
                         {headers.map((h, i) => (
-                          <th key={i} className="px-3 py-2 border-b">{h}</th>
+                          <th key={i} className="px-3 py-2 border border-black">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -181,7 +193,7 @@ export default function DigiPinConverter() {
                       {processedData.slice(0, 10).map((row, rowIndex) => (
                         <tr key={rowIndex} className="even:bg-green-50">
                           {headers.map((h, i) => (
-                            <td key={i} className="px-3 py-1 border-b">{row[h]}</td>
+                            <td key={i} className="px-3 py-1 border border-black">{row[h]}</td>
                           ))}
                         </tr>
                       ))}
