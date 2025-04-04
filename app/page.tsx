@@ -136,6 +136,7 @@ export default function DigiPinConverter() {
           <CardContent className="p-6 space-y-4">
             <h2 className="text-xl font-bold">DIGIPIN Generator from CSV</h2>
             <Input type="file" accept=".csv" onChange={handleFileUpload} />
+
             {rawData.length > 0 && processedData.length === 0 && (
               <>
                 <div className="mt-4 overflow-auto max-h-[300px] border rounded-md">
