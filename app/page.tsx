@@ -138,7 +138,7 @@ export default function DigiPinConverter() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <Input className="border border-black" type="file" accept=".csv" onChange={handleFileUpload} />
               <a
-                href="https://github.com/Sum4n7h19/digicsv/blob/master/sample/sample.csv"
+                href="https://raw.githubusercontent.com/Sum4n7h19/digicsv/refs/heads/master/sample/sample.csv"
                 download
                 target="_blank"
                 rel="noopener noreferrer"
