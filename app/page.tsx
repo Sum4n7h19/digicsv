@@ -1,102 +1,247 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import Papa from 'papaparse';
+
+export default function DigiPinConverter() {
+  const [rawData, setRawData] = useState<any[]>([]);
+  const [processedData, setProcessedData] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null); // NEW: error state
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setProcessedData([]);
+    setDownloadUrl(null);
+    setError(null); // Clear previous errors
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function (results) {
+        if (!results.meta.fields) {
+          setError('The CSV file has no headers.');
+          return;
+        }
+
+        const requiredColumns = ['latitude', 'longitude'];
+        const missing = requiredColumns.filter(col => !results.meta.fields!.includes(col));
+
+        if (missing.length > 0) {
+          setError(`Missing required column(s): ${missing.join(', ')}`);
+          return;
+        }
+
+        const cleaned = results.data.filter((row: any) => row.latitude && row.longitude);
+        if (cleaned.length === 0) {
+          setError('No valid rows with latitude and longitude found.');
+          return;
+        }
+
+        setRawData(cleaned);
+        setHeaders(Object.keys(cleaned[0]));
+      },
+      error: (err) => {
+        setError(`Error parsing CSV: ${err.message}`);
+      }
+    });
+  };
+
+  const handleProcess = () => {
+    setProcessing(true);
+
+    const enriched = rawData.map((row: any) => {
+      const lat = parseFloat(row.latitude);
+      const lon = parseFloat(row.longitude);
+      const digipin = getDIGIPIN(lat, lon);
+      return { ...row, digipin };
+    });
+
+    const csv = Papa.unparse(enriched);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    setProcessedData(enriched);
+    setDownloadUrl(url);
+    setHeaders([...headers, 'digipin']);
+    setProcessing(false);
+  };
+
+  const getDIGIPIN = (lat: number, lon: number): string => {
+    const L = [
+      ['F', 'C', '9', '8'],
+      ['J', '3', '2', '7'],
+      ['K', '4', '5', '6'],
+      ['L', 'M', 'P', 'T']
+    ];
+
+    let vDIGIPIN = '';
+    let row = 0, column = 0;
+    let MinLat = 2.5, MaxLat = 38.50, MinLon = 63.50, MaxLon = 99.50;
+    const LatDivBy = 4, LonDivBy = 4;
+
+    if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) return 'Out of Bound';
+
+    for (let Lvl = 1; Lvl <= 10; Lvl++) {
+      const LatDivDeg = (MaxLat - MinLat) / LatDivBy;
+      const LonDivDeg = (MaxLon - MinLon) / LonDivBy;
+
+      let NextLvlMaxLat = MaxLat;
+      let NextLvlMinLat = MaxLat - LatDivDeg;
+
+      for (let x = 0; x < LatDivBy; x++) {
+        if (lat >= NextLvlMinLat && lat < NextLvlMaxLat) {
+          row = x;
+          break;
+        } else {
+          NextLvlMaxLat = NextLvlMinLat;
+          NextLvlMinLat = NextLvlMaxLat - LatDivDeg;
+        }
+      }
+
+      let NextLvlMinLon = MinLon;
+      let NextLvlMaxLon = MinLon + LonDivDeg;
+
+      for (let x = 0; x < LonDivBy; x++) {
+        if (lon >= NextLvlMinLon && lon < NextLvlMaxLon) {
+          column = x;
+          break;
+        } else if ((NextLvlMinLon + LonDivDeg) < MaxLon) {
+          NextLvlMinLon = NextLvlMaxLon;
+          NextLvlMaxLon = NextLvlMinLon + LonDivDeg;
+        } else {
+          column = x;
+        }
+      }
+
+      if (Lvl === 1 && L[row][column] === '0') return 'Out of Bound';
+
+      vDIGIPIN += L[row][column];
+      if (Lvl === 3 || Lvl === 6) vDIGIPIN += '-';
+
+      MinLat = NextLvlMinLat;
+      MaxLat = NextLvlMaxLat;
+      MinLon = NextLvlMinLon;
+      MaxLon = NextLvlMaxLon;
+    }
+
+    return vDIGIPIN;
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-grow flex flex-col items-center justify-center p-4 space-y-4">
+        <center>
+          <h1 className="text-2xl font-bold text-center leading-relaxed">
+            Centre of Excellence in Land Administration and Management
+            <br />
+            Administrative Training Institute (ATI), Mysuru, Karnataka
+            <br />
+            An Initiative of Department of Land Resources, Ministry of Rural Development, Government of India
+          </h1>
+        </center>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+        <Card className="w-full max-w-6xl">
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-xl font-bold">DIGIPIN Generator from CSV</h2>
+
+            {error && (
+              <div className="p-3 bg-red-100 text-red-700 border border-red-400 rounded">
+                <strong>Error:</strong> {error}
+              </div>
+            )}
+
+            <Input type="file" accept=".csv" onChange={handleFileUpload} />
+
+            {rawData.length > 0 && processedData.length === 0 && (
+              <>
+                <div className="mt-4 overflow-auto max-h-[300px] border rounded-md">
+                  <table className="table-auto w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        {headers.map((h, i) => (
+                          <th key={i} className="px-3 py-2 border-b">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rawData.slice(0, 10).map((row, rowIndex) => (
+                        <tr key={rowIndex} className="even:bg-gray-50">
+                          {headers.map((h, i) => (
+                            <td key={i} className="px-3 py-1 border-b">{row[h]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Previewing 10 rows</p>
+                <Button className="mt-3" onClick={handleProcess} disabled={processing}>
+                  {processing ? 'Processing...' : 'Process DIGIPIN'}
+                </Button>
+              </>
+            )}
+
+            {processedData.length > 0 && (
+              <>
+                <div className="mt-4 overflow-auto max-h-[300px] border rounded-md">
+                  <table className="table-auto w-full text-sm">
+                    <thead>
+                      <tr className="bg-green-100">
+                        {headers.map((h, i) => (
+                          <th key={i} className="px-3 py-2 border-b">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processedData.slice(0, 10).map((row, rowIndex) => (
+                        <tr key={rowIndex} className="even:bg-green-50">
+                          {headers.map((h, i) => (
+                            <td key={i} className="px-3 py-1 border-b">{row[h]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Processed and previewing 10 rows</p>
+                {downloadUrl && (
+                  <a href={downloadUrl} download="digipin_output.csv">
+                    <Button className="mt-3">Download DIGIPIN CSV</Button>
+                  </a>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <footer className="text-sm w-full mt-auto bg-gray-100 py-3 px-4 border-t">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
+          <p>
+            Application by: Sumanth M, Centre of Excellence in Land Administration
+            and Management, ATI, Mysuru
+          </p>
+          <p>
+            Special Thanks to: Ministry of Communications Department of Posts for
+            providing DIGIPIN Algorithm for Implementation
+          </p>
           <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://www.mydigipin.com/p/digipin.html"
+            className="text-blue-600 underline"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+            Source: DIGIPIN Documentation
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
       </footer>
     </div>
   );
