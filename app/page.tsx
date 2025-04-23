@@ -223,7 +223,7 @@ export default function DigiPinConverter() {
             providing DIGIPIN Algorithm for Implementation
           </p>
           <a
-            href="https://www.mydigipin.com/p/digipin.html"
+            href="https://www.indiapost.gov.in/VAS/Pages/digipin.aspx"
             className="text-blue-600 underline"
             target="_blank"
             rel="noopener noreferrer"
